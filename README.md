@@ -1,67 +1,108 @@
 # DocuFlow
 
-DocuFlow is an AI-powered document workspace designed to help users upload, manage, edit, search, and understand documents in one place. The app combines practical PDF utilities with AI-assisted analysis so people can work with documents faster without switching between multiple tools.
+AI-powered document workspace for PDF processing, OCR, search, and intelligent document understanding.
 
-## Core product features
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?logo=vercel&logoColor=white)](https://docuflow-zeta-umber.vercel.app/)
+[![Gemini](https://img.shields.io/badge/AI-Gemini-8A2BE2)](https://ai.google.dev/)
+[![GitHub](https://img.shields.io/badge/Repo-GitHub-181717?logo=github)](https://github.com/AnchalGupta1117/docuflow)
 
-### 1. Document workspace
-- upload documents to a dashboard
-- manage multiple files in one place
-- browse and organize stored documents
-- persist uploaded files in browser storage for a smoother workflow
+## Live demo
 
-### 2. PDF processing tools
-- merge multiple PDF files into one
-- split a PDF into selected pages or ranges
-- compress PDFs to reduce file size
-- rotate and reorder pages
-- convert PDFs into images
-- convert images into PDF files
-- extract text from scanned images using OCR
-- search within or across document content
+Visit the app here: https://docuflow-zeta-umber.vercel.app/
 
-### 3. AI document assistant
-- ask questions about document content
-- generate summaries
-- pull out key facts and important sections
-- explain complex material in simpler terms
-- support document understanding workflows for reports, research, and study material
+## Screenshot gallery
 
-### 4. Dashboard UX
-- modern dark UI with cyan-accent styling
-- quick access to document actions
-- grouped tool cards for key workflows
-- tailored landing-page experience for a document SaaS product
+### Home
 
-## How the app is structured
-
-The app is organized around a document-first workflow:
-
-1. user logs in or signs up
-2. document is uploaded to the dashboard
-3. file is stored locally in IndexedDB
-4. user chooses a PDF tool or AI action
-5. document is processed, queried, or analyzed
-
-## Key screens and modules
-
-### Landing page
-The homepage presents the product story and highlights the core document features.
+![DocuFlow home screen](./screenshots/home.png)
 
 ### Dashboard
-Main workspace for managing uploaded documents and launching actions.
 
-### Tool pages
-Standalone pages under app/tools include PDF workflows like merge, split, search, OCR, and conversion.
+![DocuFlow dashboard](./screenshots/dashboard.png)
 
-### AI route
-The AI integration is handled in app/api/ai/route.ts using the Gemini API.
+### AI assistant
 
-### Local storage layer
-Document persistence and browser storage logic lives in lib/document-store.ts.
+![DocuFlow AI assistant](./screenshots/ai-assistant.png)
 
-### Auth layer
-User sign-up and login logic is handled in lib/auth.ts.
+### PDF tools
+
+![DocuFlow PDF tools](./screenshots/pdf_tools.png)
+
+## Overview
+
+DocuFlow is a modern document-first workspace designed to simplify how users work with PDFs, scanned files, extracted text, and AI-powered document understanding. Instead of jumping across several fragmented tools, users can upload documents, organize them, process them, and ask questions about their content from one streamlined interface.
+
+The app blends PDF utilities, OCR workflows, search, and AI analysis into a single experience for students, professionals, researchers, and teams handling document-heavy tasks.
+
+## Why DocuFlow?
+
+Most document workflows still involve switching between separate tools for:
+
+- PDF editing and merging
+- OCR text extraction
+- searching through large files
+- asking questions about uploaded content
+- keeping a readable document workspace organized
+
+DocuFlow brings these capabilities together in one place so users can move from file upload to insight faster and with less friction.
+
+## Core features
+
+### Document workspace
+- upload and manage documents in one dashboard
+- browse recent files and workspace activity
+- keep a lightweight local document environment for fast access
+
+### PDF tools
+- merge PDFs
+- split PDFs by page or range
+- compress large files
+- rotate or reorder pages
+- convert PDFs to images
+- convert images into PDF documents
+
+### OCR and search
+- extract text from scanned or image-based documents
+- search across uploaded content
+- support quick lookup workflows for reports, notes, and research material
+
+### AI document assistant
+- ask questions about uploaded documents
+- generate summaries of long content
+- identify important facts and key takeaways
+- explain content in simpler, clearer language
+
+### Modern UX
+- dark, premium dashboard interface
+- clean tool navigation and organized layout
+- fast access to key workflows from a single screen
+
+## How it works
+
+1. A user signs in or creates a local demo account.
+2. A document is uploaded to the dashboard.
+3. The file is stored locally in IndexedDB for browser persistence.
+4. The user selects a PDF workflow or AI action.
+5. The document is processed, searched, or analyzed through the app’s tool flow.
+
+## Architecture
+
+```text
+User
+  ↓
+Next.js frontend
+  ↓
+DocuFlow app
+  ├── PDF.js / pdf-lib
+  ├── Tesseract.js for OCR
+  ├── IndexedDB storage
+  ├── localStorage session/auth
+  └── Gemini API
+        ↓
+  Next.js API route
+```
 
 ## Tech stack
 
@@ -73,9 +114,22 @@ User sign-up and login logic is handled in lib/auth.ts.
 - Lucide React
 - Gemini API
 - IndexedDB
-- PDF.js and PDF-lib
+- PDF.js
+- pdf-lib
 - Tesseract.js
 - Mammoth
+
+## Security and reliability
+
+The current implementation includes several safeguards for a demo and prototype workflow:
+
+- Gemini API key is kept server-side in the Next.js API route
+- client-side validation runs before upload
+- request validation is enforced in the AI route
+- request size limits and rate limiting are configured
+- file type checks and PDF signature validation help reduce invalid inputs
+
+> Note: this is currently a local/demo-oriented authentication flow and is not a production-grade auth system.
 
 ## Project structure
 
@@ -105,6 +159,11 @@ docuflow/
 │   └── utils.ts
 ├── public/
 │   └── pdf.js/
+├── screenshots/
+│   ├── ai.png
+│   ├── dashboard.png
+│   ├── home.png
+│   └── pdf_tools.png
 ├── eslint.config.mjs
 ├── next-env.d.ts
 ├── next.config.ts
@@ -115,32 +174,32 @@ docuflow/
 └── .gitignore
 ```
 
-## Environment setup
+## Getting started
 
-Create a .env.local file in the project root:
-
-```env
-GEMINI_API_KEY=your_google_gemini_api_key_here
-GEMINI_MODEL=gemini-3.5-flash-lite
-```
-
-## Installation
+### Install dependencies
 
 ```bash
 npm install
 ```
 
-## Run locally
+### Set up environment variables
+
+Create a `.env.local` file in the project root:
+
+```env
+GEMINI_API_KEY=your_google_gemini_api_key_here
+GEMINI_MODEL=your_supported_gemini_model
+```
+
+### Run locally
 
 ```bash
 npm run dev
 ```
 
-Open:
+Open the app in your browser at:
 
-```txt
 http://localhost:3000
-```
 
 ## Available scripts
 
@@ -151,22 +210,28 @@ npm run start
 npm run lint
 ```
 
-## Feature summary
+## Deployment
 
-DocuFlow is built around a practical use case: turning document work into a single streamlined workflow. Instead of requiring multiple separate apps for file organization, PDF editing, OCR, and AI analysis, the project brings these capabilities together into one platform.
+This project is deployed on Vercel:
 
-This is strongest as a modern document productivity MVP and a useful foundation for a real AI document SaaS product.
+https://docuflow-zeta-umber.vercel.app/
 
-## Future improvements
+## Roadmap
 
-- make the dashboard more modular and maintainable
+Planned improvements include:
+
+- refactor the dashboard into smaller reusable components
 - standardize styling across all tool pages
-- improve loading states and empty states
+- improve loading, empty, and error states
 - strengthen accessibility and keyboard support
-- switch auth to a secure backend-based system for production
-- add real backend storage for multi-user workflows
-- expand testing and document processing reliability
+- move authentication to a secure backend-based system
+- add persistent multi-user document storage
+- expand automated testing and production-grade reliability
 
 ## License
 
-No license file is currently included in the repo. If you plan to publish or distribute this project publicly, add an appropriate license before release.
+This project does not currently include a license file. If you plan to distribute or publish it publicly, consider adding an appropriate open-source license.
+
+## Author
+
+Anchal Gupta
