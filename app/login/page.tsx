@@ -24,7 +24,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (loading) {
@@ -49,7 +51,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = loginUser(
+      const result = await loginUser(
         normalizedEmail,
         normalizedPassword,
       );

@@ -1,3 +1,5 @@
+"use client";
+
 export interface DocuFlowUser {
   id: string;
   name: string;
@@ -9,14 +11,20 @@ const USERS_KEY = "docuflow_users";
 const SESSION_KEY = "docuflow_session";
 
 interface StoredUser extends DocuFlowUser {
-  password: string;
+  passwordHash: string;
 }
 
 function getUsers(): StoredUser[] {
   if (typeof window === "undefined") return [];
 
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    const stored = localStorage.getItem(USERS_KEY);
+
+    if (!stored) return [];
+
+    const parsed = JSON.parse(stored);
+
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -26,14 +34,61 @@ function saveUsers(users: StoredUser[]) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
-export function registerUser(
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    data
+  );
+
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export async function registerUser(
   name: string,
   email: string,
   password: string
-): { success: boolean; message: string; user?: DocuFlowUser } {
-  const users = getUsers();
-
+): Promise<{
+  success: boolean;
+  message: string;
+  user?: DocuFlowUser;
+}> {
+  const trimmedName = name.trim();
   const normalizedEmail = email.trim().toLowerCase();
+
+  if (!trimmedName) {
+    return {
+      success: false,
+      message: "Please enter your name.",
+    };
+  }
+
+  if (!normalizedEmail) {
+    return {
+      success: false,
+      message: "Please enter your email.",
+    };
+  }
+
+  if (!password) {
+    return {
+      success: false,
+      message: "Please enter a password.",
+    };
+  }
+
+  if (password.length < 6) {
+    return {
+      success: false,
+      message: "Password must be at least 6 characters.",
+    };
+  }
+
+  const users = getUsers();
 
   if (users.some((user) => user.email === normalizedEmail)) {
     return {
@@ -42,66 +97,102 @@ export function registerUser(
     };
   }
 
-  const user: StoredUser = {
-    id: crypto.randomUUID(),
-    name: name.trim(),
-    email: normalizedEmail,
-    password,
-    createdAt: new Date().toISOString(),
-  };
+  try {
+    const passwordHash = await hashPassword(password);
 
-  users.push(user);
-  saveUsers(users);
+    const user: StoredUser = {
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      email: normalizedEmail,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+    };
 
-  const sessionUser: DocuFlowUser = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    createdAt: user.createdAt,
-  };
+    users.push(user);
+    saveUsers(users);
 
-  localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+    const sessionUser: DocuFlowUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+    };
 
-  return {
-    success: true,
-    message: "Account created successfully.",
-    user: sessionUser,
-  };
-}
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify(sessionUser)
+    );
 
-export function loginUser(
-  email: string,
-  password: string
-): { success: boolean; message: string; user?: DocuFlowUser } {
-  const users = getUsers();
-
-  const user = users.find(
-    (item) =>
-      item.email === email.trim().toLowerCase() &&
-      item.password === password
-  );
-
-  if (!user) {
+    return {
+      success: true,
+      message: "Account created successfully.",
+      user: sessionUser,
+    };
+  } catch {
     return {
       success: false,
-      message: "Invalid email or password.",
+      message: "Unable to create your account. Please try again.",
+    };
+  }
+}
+
+export async function loginUser(
+  email: string,
+  password: string
+): Promise<{
+  success: boolean;
+  message: string;
+  user?: DocuFlowUser;
+}> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!normalizedEmail || !password) {
+    return {
+      success: false,
+      message: "Please enter your email and password.",
     };
   }
 
-  const sessionUser: DocuFlowUser = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    createdAt: user.createdAt,
-  };
+  try {
+    const users = getUsers();
+    const passwordHash = await hashPassword(password);
 
-  localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+    const user = users.find(
+      (item) =>
+        item.email === normalizedEmail &&
+        item.passwordHash === passwordHash
+    );
 
-  return {
-    success: true,
-    message: "Login successful.",
-    user: sessionUser,
-  };
+    if (!user) {
+      return {
+        success: false,
+        message: "Invalid email or password.",
+      };
+    }
+
+    const sessionUser: DocuFlowUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+    };
+
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify(sessionUser)
+    );
+
+    return {
+      success: true,
+      message: "Login successful.",
+      user: sessionUser,
+    };
+  } catch {
+    return {
+      success: false,
+      message: "Unable to sign in. Please try again.",
+    };
+  }
 }
 
 export function getCurrentUser(): DocuFlowUser | null {
@@ -112,8 +203,22 @@ export function getCurrentUser(): DocuFlowUser | null {
 
     if (!session) return null;
 
-    return JSON.parse(session) as DocuFlowUser;
+    const parsed = JSON.parse(session);
+
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.name !== "string" ||
+      typeof parsed.email !== "string"
+    ) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+
+    return parsed as DocuFlowUser;
   } catch {
+    localStorage.removeItem(SESSION_KEY);
     return null;
   }
 }

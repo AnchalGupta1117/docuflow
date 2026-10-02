@@ -30,8 +30,15 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
     setError("");
 
     if (!name.trim()) {
@@ -41,6 +48,11 @@ export default function SignupPage() {
 
     if (!email.trim()) {
       setError("Please enter your email address.");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address.");
       return;
     }
 
@@ -55,21 +67,37 @@ export default function SignupPage() {
     }
 
     if (!agree) {
-      setError("Please accept the Terms of Service and Privacy Policy.");
+      setError(
+        "Please accept the Terms of Service and Privacy Policy.",
+      );
       return;
     }
 
     setLoading(true);
 
-    const result = registerUser(name, email, password);
+    try {
+      const result = await registerUser(
+        name,
+        email,
+        password,
+      );
 
-    if (!result.success) {
-      setError(result.message);
+      if (!result.success) {
+        setError(result.message);
+        setLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch (signupError) {
+      console.error("Signup failed:", signupError);
+
+      setError(
+        "Unable to create your account right now. Please try again.",
+      );
+
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
   }
 
   return (
@@ -80,10 +108,14 @@ export default function SignupPage() {
           <div className="absolute inset-0 background-grid opacity-30" />
 
           <div className="absolute left-1/4 top-1/4 h-72 w-72 rounded-full bg-cyan-500/10 blur-[100px]" />
+
           <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-violet-500/10 blur-[110px]" />
 
           <div className="relative z-10 p-10">
-            <Link href="/" className="inline-flex items-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-3"
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400 text-black">
                 <FileText size={21} />
               </div>
@@ -103,12 +135,15 @@ export default function SignupPage() {
             <h1 className="text-5xl font-semibold leading-[1.08] tracking-tight xl:text-6xl">
               Everything your
               <br />
-              <span className="text-gradient">documents need.</span>
+              <span className="text-gradient">
+                documents need.
+              </span>
             </h1>
 
             <p className="mt-6 max-w-lg text-base leading-7 text-zinc-400">
-              Create your workspace and bring your PDFs, images and documents
-              together with powerful tools and AI assistance.
+              Create your workspace and bring your PDFs,
+              images and documents together with powerful
+              tools and AI assistance.
             </p>
 
             <div className="mt-10 space-y-3">
@@ -144,13 +179,18 @@ export default function SignupPage() {
           <div className="relative z-10 w-full max-w-md">
             {/* MOBILE LOGO */}
             <div className="mb-10 flex justify-center lg:hidden">
-              <Link href="/" className="inline-flex items-center gap-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-3"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400 text-black">
                   <FileText size={21} />
                 </div>
 
                 <span className="text-xl font-semibold">
-                  Docu<span className="text-cyan-400">Flow</span>
+                  Docu<span className="text-cyan-400">
+                    Flow
+                  </span>
                 </span>
               </Link>
             </div>
@@ -165,11 +205,16 @@ export default function SignupPage() {
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-zinc-500">
-                Start managing and understanding your documents with DocuFlow.
+                Start managing and understanding your
+                documents with DocuFlow.
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4"
+              noValidate
+            >
               {/* NAME */}
               <div>
                 <label
@@ -189,10 +234,17 @@ export default function SignupPage() {
                     id="name"
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+
+                      if (error) {
+                        setError("");
+                      }
+                    }}
                     placeholder="Your name"
                     autoComplete="name"
-                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10"
+                    disabled={loading}
+                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -216,10 +268,17 @@ export default function SignupPage() {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+
+                      if (error) {
+                        setError("");
+                      }
+                    }}
                     placeholder="you@example.com"
                     autoComplete="email"
-                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10"
+                    disabled={loading}
+                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -241,19 +300,33 @@ export default function SignupPage() {
 
                   <input
                     id="password"
-                    type={showPassword ? "text" : "password"}
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+
+                      if (error) {
+                        setError("");
+                      }
+                    }}
                     placeholder="At least 8 characters"
                     autoComplete="new-password"
-                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10"
+                    disabled={loading}
+                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     aria-label="Toggle password visibility"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300"
+                    onClick={() =>
+                      setShowPassword((v) => !v)
+                    }
+                    disabled={loading}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 transition hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {showPassword ? (
                       <EyeOff size={18} />
@@ -281,19 +354,33 @@ export default function SignupPage() {
 
                   <input
                     id="confirmPassword"
-                    type={showConfirm ? "text" : "password"}
+                    type={
+                      showConfirm
+                        ? "text"
+                        : "password"
+                    }
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+
+                      if (error) {
+                        setError("");
+                      }
+                    }}
                     placeholder="Re-enter your password"
                     autoComplete="new-password"
-                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10"
+                    disabled={loading}
+                    className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] pl-11 pr-12 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     aria-label="Toggle confirm password visibility"
-                    onClick={() => setShowConfirm((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300"
+                    onClick={() =>
+                      setShowConfirm((v) => !v)
+                    }
+                    disabled={loading}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 transition hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {showConfirm ? (
                       <EyeOff size={18} />
@@ -309,20 +396,36 @@ export default function SignupPage() {
                 <input
                   type="checkbox"
                   checked={agree}
-                  onChange={(e) => setAgree(e.target.checked)}
+                  onChange={(e) => {
+                    setAgree(e.target.checked);
+
+                    if (error) {
+                      setError("");
+                    }
+                  }}
+                  disabled={loading}
                   className="mt-1 h-4 w-4 shrink-0 accent-cyan-400"
                 />
 
                 <span>
                   I agree to the{" "}
-                  <span className="text-cyan-400">Terms of Service</span> and{" "}
-                  <span className="text-cyan-400">Privacy Policy</span>.
+                  <span className="text-cyan-400">
+                    Terms of Service
+                  </span>{" "}
+                  and{" "}
+                  <span className="text-cyan-400">
+                    Privacy Policy
+                  </span>
+                  .
                 </span>
               </label>
 
               {/* ERROR */}
               {error && (
-                <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm leading-5 text-amber-300">
+                <div
+                  role="alert"
+                  className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm leading-5 text-amber-300"
+                >
                   {error}
                 </div>
               )}
@@ -333,13 +436,20 @@ export default function SignupPage() {
                 disabled={loading}
                 className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 text-sm font-semibold text-black transition hover:bg-cyan-300 hover:shadow-[0_0_30px_rgba(34,211,238,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Creating account..." : "Create account"}
+                {loading ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                    Creating account...
+                  </>
+                ) : (
+                  <>
+                    Create account
 
-                {!loading && (
-                  <ArrowRight
-                    size={17}
-                    className="transition-transform group-hover:translate-x-0.5"
-                  />
+                    <ArrowRight
+                      size={17}
+                      className="transition-transform group-hover:translate-x-0.5"
+                    />
+                  </>
                 )}
               </button>
             </form>
@@ -348,10 +458,15 @@ export default function SignupPage() {
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="font-medium text-cyan-400 hover:text-cyan-300"
+                className="font-medium text-cyan-400 transition hover:text-cyan-300"
               >
                 Sign in
               </Link>
+            </p>
+
+            <p className="mt-5 text-center text-[11px] leading-5 text-zinc-700">
+              Your account and workspace are currently
+              stored locally in this browser.
             </p>
           </div>
         </section>
