@@ -86,14 +86,6 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemo() {
-    setEmail("demo@docuflow.app");
-    setPassword("demo12345");
-    setError(
-      "Demo account details filled. Create this account from Sign Up first if it does not exist.",
-    );
-  }
-
   function handleForgotPassword() {
     setError(
       "Password reset is not available yet. Please use your registered password.",
@@ -379,31 +371,18 @@ export default function LoginPage() {
               <div className="h-px flex-1 bg-white/[0.07]" />
 
               <span className="text-xs text-zinc-700">
-                OR
+                NEW HERE?
               </span>
 
               <div className="h-px flex-1 bg-white/[0.07]" />
             </div>
 
-            {/* Demo account */}
-            <button
-              type="button"
-              onClick={fillDemo}
-              disabled={loading}
-              className="flex h-12 w-full items-center justify-center rounded-xl border border-white/[0.09] bg-white/[0.025] text-sm font-medium text-zinc-300 transition hover:border-white/[0.15] hover:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
+            <Link
+              href="/signup"
+              className="flex h-12 w-full items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/60 hover:bg-cyan-400/15"
             >
-              Use demo account
-            </button>
-
-            <p className="mt-8 text-center text-sm text-zinc-500">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/signup"
-                className="font-medium text-cyan-400 transition hover:text-cyan-300"
-              >
-                Create one
-              </Link>
-            </p>
+              Create new account
+            </Link>
 
             <p className="mt-6 text-center text-[11px] leading-5 text-zinc-700">
               Your account and workspace are currently
