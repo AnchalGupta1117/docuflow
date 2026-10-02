@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PDFDocument, degrees } from "pdf-lib";
-import * as pdfjsLib from "pdfjs-dist";
 
 import { downloadBlob, formatFileSize } from "@/lib/utils";
 
@@ -32,15 +31,6 @@ interface PageItem {
 type ExportMode = "all" | "selected";
 
 const MAX_FILE_SIZE_MB = 50;
-
-function configurePdfJsWorker() {
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url
-    ).toString();
-  }
-}
 
 function createPageId() {
   return `page-${Date.now()}-${Math.random()
@@ -118,6 +108,7 @@ export default function EditPdfPage() {
       !selectedFile.name.toLowerCase().endsWith(".pdf")
     ) {
       setError("Please select a valid PDF file.");
+      event.target.value = "";
       return;
     }
 
@@ -125,6 +116,7 @@ export default function EditPdfPage() {
       setError(
         `PDF size must be below ${MAX_FILE_SIZE_MB} MB.`
       );
+      event.target.value = "";
       return;
     }
 
@@ -132,7 +124,18 @@ export default function EditPdfPage() {
     clearPages();
 
     try {
-      configurePdfJsWorker();
+      /*
+       * pdfjs-dist is imported dynamically so that it is never
+       * evaluated during Next.js server prerendering.
+       */
+      const pdfjsLib = await import("pdfjs-dist");
+
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url
+        ).toString();
+      }
 
       const arrayBuffer = await selectedFile.arrayBuffer();
 
@@ -144,7 +147,11 @@ export default function EditPdfPage() {
 
       const generatedPages: PageItem[] = [];
 
-      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+      ) {
         const page = await pdf.getPage(pageNumber);
 
         const viewport = page.getViewport({
@@ -162,6 +169,7 @@ export default function EditPdfPage() {
         canvas.height = Math.ceil(viewport.height);
 
         await page.render({
+          canvas,
           canvasContext: context,
           viewport,
         }).promise;
@@ -295,6 +303,7 @@ export default function EditPdfPage() {
     });
 
     setSelectedPages(new Set());
+
     setSuccess(
       `${selectedPages.size} ${
         selectedPages.size === 1 ? "page" : "pages"
@@ -412,7 +421,11 @@ export default function EditPdfPage() {
 
       const outputPdf = await PDFDocument.create();
 
-      for (let index = 0; index < exportPages.length; index++) {
+      for (
+        let index = 0;
+        index < exportPages.length;
+        index++
+      ) {
         const pageItem = exportPages[index];
 
         const sourceIndex =
@@ -444,9 +457,14 @@ export default function EditPdfPage() {
 
       const pdfBytes = await outputPdf.save();
 
-      const blob = new Blob([pdfBytes], {
-        type: "application/pdf",
-      });
+      const safeBytes = new Uint8Array(pdfBytes);
+
+      const blob = new Blob(
+        [safeBytes.buffer as ArrayBuffer],
+        {
+          type: "application/pdf",
+        }
+      );
 
       const originalName =
         file.name.replace(/\.pdf$/i, "");

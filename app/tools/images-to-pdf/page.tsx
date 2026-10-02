@@ -347,9 +347,14 @@ export default function ImagesToPdfPage() {
 
       const pdfBytes = await pdfDoc.save();
 
-      const blob = new Blob([pdfBytes], {
-        type: "application/pdf",
-      });
+      const safeBytes = new Uint8Array(pdfBytes);
+
+      const blob = new Blob(
+        [safeBytes.buffer as ArrayBuffer],
+        {
+          type: "application/pdf",
+        }
+      );
 
       const baseName =
         items.length === 1

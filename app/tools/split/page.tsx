@@ -202,9 +202,14 @@ export default function SplitPdfPage() {
 
       const outputBytes = await outputPdf.save();
 
-      const blob = new Blob([outputBytes], {
-        type: "application/pdf",
-      });
+      const safeBytes = new Uint8Array(outputBytes);
+
+      const blob = new Blob(
+        [safeBytes.buffer as ArrayBuffer],
+        {
+          type: "application/pdf",
+        }
+      );
 
       const url = URL.createObjectURL(blob);
 

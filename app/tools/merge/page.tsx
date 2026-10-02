@@ -13,7 +13,6 @@ import {
   Info,
   Loader2,
   Merge,
-  Plus,
   Trash2,
   Upload,
   X,
@@ -108,9 +107,14 @@ export default function MergePDFPage() {
 
       const mergedBytes = await mergedPdf.save();
 
-      const blob = new Blob([mergedBytes], {
-        type: "application/pdf",
-      });
+      const safeBytes = new Uint8Array(mergedBytes);
+
+      const blob = new Blob(
+        [safeBytes.buffer as ArrayBuffer],
+        {
+          type: "application/pdf",
+        }
+      );
 
       const url = URL.createObjectURL(blob);
 

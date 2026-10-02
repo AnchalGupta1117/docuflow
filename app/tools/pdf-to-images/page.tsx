@@ -14,7 +14,6 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import * as pdfjsLib from "pdfjs-dist";
 
 import { downloadBlob, formatFileSize } from "@/lib/utils";
 
@@ -30,18 +29,12 @@ type ImageFormat = "png" | "jpeg";
 
 const MAX_FILE_SIZE_MB = 50;
 
-function configurePdfJsWorker() {
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url
-    ).toString();
-  }
-}
-
 function parsePageRange(value: string, totalPages: number): number[] {
   if (!value.trim()) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
+    return Array.from(
+      { length: totalPages },
+      (_, index) => index + 1
+    );
   }
 
   const pages = new Set<number>();
@@ -53,7 +46,9 @@ function parsePageRange(value: string, totalPages: number): number[] {
 
   for (const part of parts) {
     if (part.includes("-")) {
-      const [startText, endText] = part.split("-").map((item) => item.trim());
+      const [startText, endText] = part
+        .split("-")
+        .map((item) => item.trim());
 
       const start = Number(startText);
       const end = Number(endText);
@@ -91,7 +86,9 @@ function parsePageRange(value: string, totalPages: number): number[] {
 
 export default function PdfToImagesPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [totalPages, setTotalPages] = useState<number | null>(null);
+  const [totalPages, setTotalPages] = useState<number | null>(
+    null
+  );
 
   const [pageRange, setPageRange] = useState("");
   const [format, setFormat] = useState<ImageFormat>("png");
@@ -116,7 +113,10 @@ export default function PdfToImagesPage() {
   }, [pageRange, totalPages]);
 
   function clearGeneratedImages() {
-    images.forEach((image) => URL.revokeObjectURL(image.url));
+    images.forEach((image) => {
+      URL.revokeObjectURL(image.url);
+    });
+
     setImages([]);
   }
 
@@ -148,18 +148,38 @@ export default function PdfToImagesPage() {
       !selectedFile.name.toLowerCase().endsWith(".pdf")
     ) {
       setError("Please select a valid PDF file.");
+      event.target.value = "";
       return;
     }
 
-    if (selectedFile.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setError(`PDF size must be below ${MAX_FILE_SIZE_MB} MB.`);
+    if (
+      selectedFile.size >
+      MAX_FILE_SIZE_MB * 1024 * 1024
+    ) {
+      setError(
+        `PDF size must be below ${MAX_FILE_SIZE_MB} MB.`
+      );
+      event.target.value = "";
       return;
     }
 
     try {
-      configurePdfJsWorker();
+      /*
+       * pdfjs-dist is imported only in the browser.
+       * This prevents Next.js server prerendering from
+       * evaluating PDF.js and throwing "Iterator is not defined".
+       */
+      const pdfjsLib = await import("pdfjs-dist");
 
-      const arrayBuffer = await selectedFile.arrayBuffer();
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url
+        ).toString();
+      }
+
+      const arrayBuffer =
+        await selectedFile.arrayBuffer();
 
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuffer),
@@ -174,9 +194,15 @@ export default function PdfToImagesPage() {
       setCurrentPage(0);
     } catch (err) {
       console.error(err);
-      setError("Unable to read this PDF. Please try another file.");
+
+      setError(
+        "Unable to read this PDF. Please try another file."
+      );
+
       setFile(null);
       setTotalPages(null);
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -196,7 +222,9 @@ export default function PdfToImagesPage() {
       pages = parsePageRange(pageRange, totalPages);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Invalid page selection."
+        err instanceof Error
+          ? err.message
+          : "Invalid page selection."
       );
       return;
     }
@@ -211,7 +239,17 @@ export default function PdfToImagesPage() {
     setCurrentPage(0);
 
     try {
-      configurePdfJsWorker();
+      /*
+       * Keep PDF.js completely client-side.
+       */
+      const pdfjsLib = await import("pdfjs-dist");
+
+      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url
+        ).toString();
+      }
 
       const arrayBuffer = await file.arrayBuffer();
 
@@ -223,7 +261,11 @@ export default function PdfToImagesPage() {
 
       const generated: GeneratedImage[] = [];
 
-      for (let index = 0; index < pages.length; index++) {
+      for (
+        let index = 0;
+        index < pages.length;
+        index++
+      ) {
         const pageNumber = pages[index];
 
         setCurrentPage(pageNumber);
@@ -234,39 +276,53 @@ export default function PdfToImagesPage() {
           scale: Number(scale),
         });
 
-        const canvas = document.createElement("canvas");
+        const canvas =
+          document.createElement("canvas");
+
         const context = canvas.getContext("2d");
 
         if (!context) {
-          throw new Error("Unable to create image canvas.");
+          throw new Error(
+            "Unable to create image canvas."
+          );
         }
 
         canvas.width = Math.ceil(viewport.width);
         canvas.height = Math.ceil(viewport.height);
 
         await page.render({
+          canvas,
           canvasContext: context,
           viewport,
         }).promise;
 
         const mimeType =
-          format === "jpeg" ? "image/jpeg" : "image/png";
+          format === "jpeg"
+            ? "image/jpeg"
+            : "image/png";
 
-        const quality = format === "jpeg" ? 0.92 : undefined;
+        const quality =
+          format === "jpeg" ? 0.92 : undefined;
 
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(
-            (result) => {
-              if (result) {
-                resolve(result);
-              } else {
-                reject(new Error("Failed to create image."));
-              }
-            },
-            mimeType,
-            quality
-          );
-        });
+        const blob = await new Promise<Blob>(
+          (resolve, reject) => {
+            canvas.toBlob(
+              (result) => {
+                if (result) {
+                  resolve(result);
+                } else {
+                  reject(
+                    new Error(
+                      "Failed to create image."
+                    )
+                  );
+                }
+              },
+              mimeType,
+              quality
+            );
+          }
+        );
 
         const url = URL.createObjectURL(blob);
 
@@ -292,7 +348,9 @@ export default function PdfToImagesPage() {
 
       setSuccess(
         `${generated.length} ${
-          generated.length === 1 ? "page was" : "pages were"
+          generated.length === 1
+            ? "page was"
+            : "pages were"
         } converted successfully.`
       );
     } catch (err) {
@@ -310,17 +368,20 @@ export default function PdfToImagesPage() {
     }
   }
 
+  function getBaseFileName(name: string) {
+    return name.replace(/\.[^/.]+$/, "");
+  }
+
   function downloadImage(image: GeneratedImage) {
-    const extension = format === "jpeg" ? "jpg" : "png";
+    const extension =
+      format === "jpeg" ? "jpg" : "png";
 
     downloadBlob(
       image.blob,
-      `${getBaseFileName(file?.name || "document")}-page-${image.pageNumber}.${extension}`
+      `${getBaseFileName(
+        file?.name || "document"
+      )}-page-${image.pageNumber}.${extension}`
     );
-  }
-
-  function getBaseFileName(name: string) {
-    return name.replace(/\.[^/.]+$/, "");
   }
 
   return (
@@ -346,6 +407,7 @@ export default function PdfToImagesPage() {
                 <h1 className="text-sm font-semibold text-white">
                   PDF to Images
                 </h1>
+
                 <p className="hidden text-[11px] text-slate-500 sm:block">
                   Convert PDF pages into high-quality images
                 </p>
@@ -376,8 +438,9 @@ export default function PdfToImagesPage() {
           </h2>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Convert selected pages from your PDF into PNG or JPEG images
-            directly in your browser. Your document stays on your device.
+            Convert selected pages from your PDF into PNG or JPEG
+            images directly in your browser. Your document stays
+            on your device.
           </p>
         </div>
 
@@ -403,8 +466,9 @@ export default function PdfToImagesPage() {
                   </h3>
 
                   <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-                    Click to browse and select a PDF file. You can convert
-                    individual pages or the entire document.
+                    Click to browse and select a PDF file. You
+                    can convert individual pages or the entire
+                    document.
                   </p>
 
                   <span className="mt-6 rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-semibold text-slate-950 transition group-hover:bg-cyan-300">
@@ -432,8 +496,13 @@ export default function PdfToImagesPage() {
                         </p>
 
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                          <span>{formatFileSize(file.size)}</span>
-                          <span>{totalPages} pages</span>
+                          <span>
+                            {formatFileSize(file.size)}
+                          </span>
+
+                          <span>
+                            {totalPages} pages
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -456,8 +525,10 @@ export default function PdfToImagesPage() {
                     <h3 className="text-sm font-semibold text-white">
                       Conversion settings
                     </h3>
+
                     <p className="mt-1 text-xs text-slate-500">
-                      Choose which pages to export and the image format.
+                      Choose which pages to export and the image
+                      format.
                     </p>
                   </div>
 
@@ -472,7 +543,9 @@ export default function PdfToImagesPage() {
                         type="text"
                         value={pageRange}
                         onChange={(event) =>
-                          setPageRange(event.target.value)
+                          setPageRange(
+                            event.target.value
+                          )
                         }
                         placeholder={`All pages or e.g. 1-3, 5, 8-${Math.min(
                           totalPages || 10,
@@ -483,7 +556,8 @@ export default function PdfToImagesPage() {
                       />
 
                       <p className="mt-2 text-[11px] text-slate-600">
-                        Leave empty to convert all {totalPages} pages.
+                        Leave empty to convert all{" "}
+                        {totalPages} pages.
                       </p>
                     </div>
 
@@ -496,7 +570,9 @@ export default function PdfToImagesPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={() => setFormat("png")}
+                          onClick={() =>
+                            setFormat("png")
+                          }
                           disabled={isProcessing}
                           className={`rounded-xl border px-3 py-3 text-left transition ${
                             format === "png"
@@ -504,7 +580,10 @@ export default function PdfToImagesPage() {
                               : "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.05]"
                           }`}
                         >
-                          <div className="text-xs font-semibold">PNG</div>
+                          <div className="text-xs font-semibold">
+                            PNG
+                          </div>
+
                           <div className="mt-1 text-[10px] opacity-70">
                             Lossless quality
                           </div>
@@ -512,7 +591,9 @@ export default function PdfToImagesPage() {
 
                         <button
                           type="button"
-                          onClick={() => setFormat("jpeg")}
+                          onClick={() =>
+                            setFormat("jpeg")
+                          }
                           disabled={isProcessing}
                           className={`rounded-xl border px-3 py-3 text-left transition ${
                             format === "jpeg"
@@ -520,7 +601,10 @@ export default function PdfToImagesPage() {
                               : "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.05]"
                           }`}
                         >
-                          <div className="text-xs font-semibold">JPEG</div>
+                          <div className="text-xs font-semibold">
+                            JPEG
+                          </div>
+
                           <div className="mt-1 text-[10px] opacity-70">
                             Smaller file size
                           </div>
@@ -547,7 +631,9 @@ export default function PdfToImagesPage() {
                       max="2.5"
                       step="0.25"
                       value={scale}
-                      onChange={(event) => setScale(event.target.value)}
+                      onChange={(event) =>
+                        setScale(event.target.value)
+                      }
                       disabled={isProcessing}
                       className="w-full accent-cyan-400 disabled:opacity-50"
                     />
@@ -567,8 +653,12 @@ export default function PdfToImagesPage() {
                   >
                     {isProcessing ? (
                       <>
-                        <Loader2 size={17} className="animate-spin" />
-                        Converting page {currentPage}...
+                        <Loader2
+                          size={17}
+                          className="animate-spin"
+                        />
+                        Converting page{" "}
+                        {currentPage}...
                       </>
                     ) : (
                       <>
@@ -583,7 +673,9 @@ export default function PdfToImagesPage() {
                       <div className="mb-2 flex items-center justify-between text-[11px]">
                         <span className="text-slate-500">
                           Processing {selectedPageCount}{" "}
-                          {selectedPageCount === 1 ? "page" : "pages"}
+                          {selectedPageCount === 1
+                            ? "page"
+                            : "pages"}
                         </span>
 
                         <span className="font-medium text-cyan-300">
@@ -594,7 +686,9 @@ export default function PdfToImagesPage() {
                       <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
                         <div
                           className="h-full rounded-full bg-cyan-400 transition-all duration-300"
-                          style={{ width: `${progress}%` }}
+                          style={{
+                            width: `${progress}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -622,16 +716,21 @@ export default function PdfToImagesPage() {
                         <h3 className="text-sm font-semibold text-white">
                           Generated images
                         </h3>
+
                         <p className="mt-1 text-xs text-slate-500">
                           {images.length}{" "}
-                          {images.length === 1 ? "image" : "images"} ready
-                          to download
+                          {images.length === 1
+                            ? "image"
+                            : "images"}{" "}
+                          ready to download
                         </p>
                       </div>
 
                       <button
                         type="button"
-                        onClick={clearGeneratedImages}
+                        onClick={
+                          clearGeneratedImages
+                        }
                         className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-[11px] font-medium text-slate-400 transition hover:border-red-400/20 hover:bg-red-400/5 hover:text-red-300"
                       >
                         <Trash2 size={13} />
@@ -653,23 +752,30 @@ export default function PdfToImagesPage() {
                             />
 
                             <span className="absolute left-3 top-3 rounded-lg border border-white/10 bg-slate-950/80 px-2 py-1 text-[10px] font-medium text-slate-300 backdrop-blur">
-                              Page {image.pageNumber}
+                              Page{" "}
+                              {image.pageNumber}
                             </span>
                           </div>
 
                           <div className="flex items-center justify-between border-t border-white/10 px-3 py-3">
                             <div>
                               <p className="text-[11px] font-medium text-slate-300">
-                                {image.width} × {image.height}
+                                {image.width} ×{" "}
+                                {image.height}
                               </p>
+
                               <p className="mt-0.5 text-[10px] text-slate-600">
-                                {formatFileSize(image.blob.size)}
+                                {formatFileSize(
+                                  image.blob.size
+                                )}
                               </p>
                             </div>
 
                             <button
                               type="button"
-                              onClick={() => downloadImage(image)}
+                              onClick={() =>
+                                downloadImage(image)
+                              }
                               className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/10 px-3 py-2 text-[11px] font-medium text-cyan-300 transition hover:bg-cyan-400/20"
                             >
                               <Download size={13} />
@@ -718,13 +824,17 @@ export default function PdfToImagesPage() {
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex items-center gap-2 text-xs font-medium text-slate-300">
-                <Sparkles size={14} className="text-cyan-300" />
+                <Sparkles
+                  size={14}
+                  className="text-cyan-300"
+                />
                 Privacy first
               </div>
 
               <p className="mt-2 text-[11px] leading-5 text-slate-600">
-                PDF rendering happens directly in your browser. Your file
-                is not uploaded to a server by this tool.
+                PDF rendering happens directly in your browser.
+                Your file is not uploaded to a server by this
+                tool.
               </p>
             </div>
           </aside>

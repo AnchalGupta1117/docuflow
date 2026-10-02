@@ -182,15 +182,42 @@ export default function DocumentViewerPage() {
   /* ========================================================= */
 
   useEffect(() => {
-    const storedFile = getDocumentFile(documentId);
+    let cancelled = false;
 
-    if (!storedFile) {
-      setFile(null);
-      setLoading(false);
-      return;
+    async function loadStoredFile() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const storedFile = await getDocumentFile(documentId);
+
+        if (cancelled) return;
+
+        if (!storedFile) {
+          setFile(null);
+          setLoading(false);
+          return;
+        }
+
+        setFile(storedFile);
+      } catch (err) {
+        console.error("Failed to retrieve stored document:", err);
+
+        if (!cancelled) {
+          setFile(null);
+          setError(
+            "Unable to retrieve this document from local storage."
+          );
+          setLoading(false);
+        }
+      }
     }
 
-    setFile(storedFile);
+    loadStoredFile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [documentId]);
 
   /* ========================================================= */
@@ -239,13 +266,14 @@ export default function DocumentViewerPage() {
     };
   }, [pdfjs, file]);
 
-  /* ========================================================= */
+    /* ========================================================= */
   /* EXTRACT DOCUMENT TEXT */
   /* ========================================================= */
 
   useEffect(() => {
     if (!pdf) return;
 
+    const currentPdf = pdf;
     let cancelled = false;
 
     async function extractText() {
@@ -266,12 +294,12 @@ export default function DocumentViewerPage() {
 
         for (
           let pageNumber = 1;
-          pageNumber <= pdf.numPages;
+          pageNumber <= currentPdf.numPages;
           pageNumber++
         ) {
           if (cancelled) return;
 
-          const page = await pdf.getPage(pageNumber);
+          const page = await currentPdf.getPage(pageNumber);
           const textContent = await page.getTextContent();
 
           const pageText = textContent.items
@@ -462,6 +490,7 @@ export default function DocumentViewerPage() {
       setCopied(false);
 
       const recentConversation = conversation.slice(-10);
+
       const conversationContext = recentConversation.length
         ? `\nCONVERSATION HISTORY:\n${recentConversation
             .map(
@@ -507,6 +536,7 @@ export default function DocumentViewerPage() {
 
       setAiAnswer(data.answer);
       setAiQuestion("");
+
       setConversation((current) => [
         ...current,
         { role: "user", content: cleanQuestion },
@@ -849,7 +879,8 @@ Avoid duplicate or overly broad topics.
         .filter(
           (topic: string, index: number, array: string[]) =>
             array.findIndex(
-              (item) => item.toLowerCase() === topic.toLowerCase()
+              (item) =>
+                item.toLowerCase() === topic.toLowerCase()
             ) === index
         )
         .slice(0, 10);
@@ -1121,12 +1152,12 @@ Avoid duplicate or overly broad topics.
           showSearch ? "hidden" : ""
         }`}
       >
-        <div className="flex h-full min-h-0 flex-col md:flex-row">
+        <div className="flex h-full min-h-0 flex-col lg:flex-row">
           {/* ===================================================== */}
           {/* PDF VIEWER */}
           {/* ===================================================== */}
 
-          <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#111827] md:w-1/2 md:flex-none">
+          <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#111827] lg:w-1/2 lg:flex-none">
             <div className="min-h-0 flex-1 overflow-auto overscroll-contain px-4 py-8 sm:px-8">
               <div className="flex min-h-full min-w-max items-start justify-center">
                 {loading ? (
@@ -1258,7 +1289,7 @@ Avoid duplicate or overly broad topics.
           {/* AI SIDEBAR */}
           {/* ===================================================== */}
 
-          <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-white/10 bg-[#050816] md:w-1/2 md:border-l md:border-t-0">
+          <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-white/10 bg-[#050816] lg:w-1/2 lg:border-l lg:border-t-0">
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 [scrollbar-color:rgba(100,116,139,0.35)_transparent] [scrollbar-width:thin]">
               {/* ================================================= */}
               {/* AI HEADER */}
@@ -1289,20 +1320,59 @@ Avoid duplicate or overly broad topics.
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/10 bg-white/[0.025] px-2.5 py-1 text-[9px] font-medium text-slate-500">
-                  Ask anything
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.025] px-2.5 py-1 text-[9px] font-medium text-slate-500">
-                  Summarize
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.025] px-2.5 py-1 text-[9px] font-medium text-slate-500">
-                  Explain simply
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.025] px-2.5 py-1 text-[9px] font-medium text-slate-500">
-                  Extract key info
-                </span>
-              </div>
+              {/* ================================================= */}
+              {/* AI INPUT */}
+              {/* ================================================= */}
+
+              <form
+                onSubmit={handleAIFormSubmit}
+                className="mt-5"
+              >
+                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3 transition-all focus-within:border-cyan-400/25 focus-within:bg-cyan-400/[0.025]">
+                  <textarea
+                    value={aiQuestion}
+                    onChange={(event) =>
+                      setAiQuestion(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        (event.ctrlKey || event.metaKey)
+                      ) {
+                        event.preventDefault();
+                        askAI(aiQuestion);
+                      }
+                    }}
+                    placeholder="Ask anything about this document..."
+                    rows={4}
+                    disabled={aiLoading}
+                    className="w-full resize-none bg-transparent px-1 text-sm leading-6 text-slate-200 outline-none placeholder:text-slate-600 disabled:opacity-60"
+                  />
+
+                  <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2">
+                    <span className="pr-3 text-[10px] leading-4 text-slate-600">
+                      Ask questions, summarize, explain or extract information
+                    </span>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        aiLoading ||
+                        !aiQuestion.trim() ||
+                        extractingText
+                      }
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.12)] transition hover:bg-cyan-300 hover:shadow-[0_0_25px_rgba(34,211,238,0.2)] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Ask AI"
+                    >
+                      <Send size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="mt-2 text-right text-[9px] text-slate-700">
+                  Tip: Ctrl + Enter to ask
+                </p>
+              </form>
 
               {/* ================================================= */}
               {/* DOCUMENT STATUS */}
@@ -1621,8 +1691,6 @@ Avoid duplicate or overly broad topics.
                   )}
                 </button>
 
-                {/* KEY INFORMATION ERROR */}
-
                 {keyInfoError && !keyInfoLoading && (
                   <div className="mt-3 rounded-xl border border-red-400/15 bg-red-400/[0.03] p-3">
                     <div className="flex items-start gap-2.5">
@@ -1643,8 +1711,6 @@ Avoid duplicate or overly broad topics.
                     </div>
                   </div>
                 )}
-
-                {/* KEY INFORMATION LOADING */}
 
                 {keyInfoLoading && (
                   <div className="mt-3 rounded-2xl border border-amber-400/15 bg-amber-400/[0.025] p-4">
@@ -1675,8 +1741,6 @@ Avoid duplicate or overly broad topics.
                     </div>
                   </div>
                 )}
-
-                {/* KEY INFORMATION RESULT */}
 
                 {keyInformation && !keyInfoLoading && (
                   <div className="mt-3 overflow-hidden rounded-2xl border border-amber-400/15 bg-gradient-to-b from-amber-400/[0.035] via-white/[0.018] to-white/[0.01]">
@@ -1938,6 +2002,7 @@ Avoid duplicate or overly broad topics.
                           <span className="truncate">
                             {topic}
                           </span>
+
                           <span className="shrink-0 text-fuchsia-400/50 transition-colors group-hover:text-fuchsia-300">
                             →
                           </span>
@@ -1967,7 +2032,7 @@ Avoid duplicate or overly broad topics.
                   </span>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-2">
                   <button
                     type="button"
                     disabled={
@@ -2055,87 +2120,40 @@ Avoid duplicate or overly broad topics.
               </div>
 
               {/* ================================================= */}
-              {/* CONVERSATION */}
+              {/* RESPONSE HEADER */}
               {/* ================================================= */}
 
-              <div className="mt-7">
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                      Conversation
-                    </p>
-                    <p className="mt-1 text-[10px] text-slate-700">
-                      Ask questions and continue with natural follow-ups.
-                    </p>
-                  </div>
+              <div className="mt-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                    Conversation
+                  </p>
 
                   {conversation.length > 0 && !aiLoading && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConversation([]);
-                        setAiAnswer("");
-                        setAiError("");
-                        setAiQuestion("");
-                      }}
-                      className="rounded-lg px-2 py-1 text-[10px] font-medium text-slate-600 transition hover:bg-white/[0.04] hover:text-slate-300"
-                    >
-                      Clear
-                    </button>
+                    <p className="mt-1 text-[10px] text-slate-700">
+                      {Math.floor(conversation.length / 2)}{" "}
+                      {Math.floor(conversation.length / 2) === 1
+                        ? "question"
+                        : "questions"}{" "}
+                      in this session
+                    </p>
                   )}
                 </div>
 
-                <form
-                  onSubmit={handleAIFormSubmit}
-                  className="rounded-2xl border border-cyan-400/15 bg-gradient-to-b from-cyan-400/[0.055] to-white/[0.02] p-3 shadow-[0_0_30px_rgba(34,211,238,0.035)] transition focus-within:border-cyan-400/30"
-                >
-                  <div className="flex items-end gap-2">
-                    <textarea
-                      value={aiQuestion}
-                      onChange={(event) => setAiQuestion(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (
-                          event.key === "Enter" &&
-                          (event.ctrlKey || event.metaKey)
-                        ) {
-                          event.preventDefault();
-                          askAI(aiQuestion);
-                        }
-                      }}
-                      placeholder="Ask anything about this document..."
-                      rows={3}
-                      disabled={aiLoading || extractingText}
-                      className="min-h-[76px] flex-1 resize-none bg-transparent px-1 py-1 text-sm leading-6 text-slate-200 outline-none placeholder:text-slate-600 disabled:opacity-60"
-                    />
-
-                    <button
-                      type="submit"
-                      disabled={
-                        aiLoading ||
-                        extractingText ||
-                        !aiQuestion.trim() ||
-                        !documentText.trim()
-                      }
-                      className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.16)] transition hover:bg-cyan-300 hover:shadow-[0_0_25px_rgba(34,211,238,0.25)] disabled:cursor-not-allowed disabled:opacity-35"
-                      aria-label="Ask DocuFlow AI"
-                    >
-                      {aiLoading ? (
-                        <RefreshCw size={15} className="animate-spin" />
-                      ) : (
-                        <Send size={15} />
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2">
-                    <span className="text-[9px] text-slate-600">
-                      Ask, follow up, or refer to something from the previous answer.
-                    </span>
-                    <span className="shrink-0 text-[9px] text-slate-700">
-                      Ctrl + Enter
-                    </span>
-                  </div>
-                </form>
+                {conversation.length > 0 && !aiLoading && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConversation([]);
+                      setAiAnswer("");
+                      setAiError("");
+                      setAiQuestion("");
+                    }}
+                    className="text-[10px] text-slate-600 transition hover:text-slate-300"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
 
               {/* ================================================= */}
@@ -2150,17 +2168,23 @@ Avoid duplicate or overly broad topics.
                   <div className="rounded-2xl border border-cyan-400/15 bg-gradient-to-b from-cyan-400/[0.06] to-white/[0.02] p-5 shadow-[0_0_30px_rgba(34,211,238,0.04)]">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10">
-                        <Sparkles size={16} className="animate-pulse text-cyan-300" />
+                        <Sparkles
+                          size={16}
+                          className="animate-pulse text-cyan-300"
+                        />
                       </div>
+
                       <div>
                         <p className="text-sm font-semibold text-slate-200">
                           DocuFlow AI is thinking
                         </p>
+
                         <p className="mt-1 text-[11px] leading-4 text-slate-600">
                           Reading your document and conversation context...
                         </p>
                       </div>
                     </div>
+
                     <div className="mt-5 space-y-2.5">
                       <div className="h-2 animate-pulse rounded-full bg-white/5" />
                       <div className="h-2 w-[88%] animate-pulse rounded-full bg-white/5" />
@@ -2174,12 +2198,17 @@ Avoid duplicate or overly broad topics.
                   <div className="rounded-2xl border border-red-400/15 bg-red-400/[0.03] p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-400/10">
-                        <X size={15} className="text-red-300" />
+                        <X
+                          size={15}
+                          className="text-red-300"
+                        />
                       </div>
+
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-red-300">
                           AI request failed
                         </p>
+
                         <p className="mt-1.5 break-words text-xs leading-5 text-red-200/60">
                           {aiError}
                         </p>
@@ -2188,22 +2217,30 @@ Avoid duplicate or overly broad topics.
                   </div>
                 )}
 
-                {!aiLoading && !aiError && conversation.length === 0 && (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] px-6 text-center">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400/10">
-                      <Sparkles size={18} className="text-cyan-300" />
+                {!aiLoading &&
+                  !aiError &&
+                  conversation.length === 0 && (
+                    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] px-6 text-center">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400/10">
+                        <Sparkles
+                          size={18}
+                          className="text-cyan-300"
+                        />
+                      </div>
+
+                      <p className="mt-4 text-sm font-semibold text-slate-300">
+                        Start a conversation
+                      </p>
+
+                      <p className="mt-2 max-w-[280px] text-xs leading-5 text-slate-600">
+                        Ask a question about the document. Then ask follow-up questions naturally using context from the conversation.
+                      </p>
                     </div>
-                    <p className="mt-4 text-sm font-semibold text-slate-300">
-                      Your conversation starts here
-                    </p>
-                    <p className="mt-2 max-w-[300px] text-xs leading-5 text-slate-600">
-                      Ask about the document above. DocuFlow AI will use the document and your previous messages for follow-up questions.
-                    </p>
-                  </div>
-                )}
+                  )}
 
                 {conversation.map((message, index) => {
                   const isUser = message.role === "user";
+
                   const isLastAssistant =
                     message.role === "assistant" &&
                     index === conversation.length - 1;
@@ -2211,7 +2248,11 @@ Avoid duplicate or overly broad topics.
                   return (
                     <div
                       key={`${message.role}-${index}`}
-                      className={isUser ? "flex justify-end" : "flex justify-start"}
+                      className={
+                        isUser
+                          ? "flex justify-end"
+                          : "flex justify-start"
+                      }
                     >
                       <div
                         className={
@@ -2227,6 +2268,7 @@ Avoid duplicate or overly broad topics.
                                 You
                               </span>
                             </div>
+
                             <p className="whitespace-pre-wrap break-words text-xs leading-5 text-slate-200">
                               {message.content}
                             </p>
@@ -2238,15 +2280,18 @@ Avoid duplicate or overly broad topics.
                                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-400/10 text-cyan-300">
                                   <Sparkles size={14} />
                                 </div>
+
                                 <div>
                                   <p className="text-xs font-semibold text-slate-100">
                                     DocuFlow AI
                                   </p>
+
                                   <p className="mt-0.5 text-[9px] text-slate-600">
                                     Based on your document
                                   </p>
                                 </div>
                               </div>
+
                               {isLastAssistant && (
                                 <button
                                   type="button"
@@ -2261,7 +2306,9 @@ Avoid duplicate or overly broad topics.
 
                             <div className="px-4 py-4">
                               <div className="max-w-none break-words text-[12px] leading-5 text-slate-300 [&_h1]:mb-3 [&_h1]:mt-0 [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-white [&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-white [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:text-cyan-300 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_strong]:text-white [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_li]:pl-1 [&_li]:text-slate-300 [&_li::marker]:text-cyan-400 [&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-cyan-400/30 [&_blockquote]:pl-3 [&_blockquote]:text-slate-400 [&_hr]:my-4 [&_hr]:border-white/10 [&_code]:rounded-md [&_code]:bg-white/[0.07] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-cyan-300">
-                                <ReactMarkdown>{message.content}</ReactMarkdown>
+                                <ReactMarkdown>
+                                  {message.content}
+                                </ReactMarkdown>
                               </div>
                             </div>
                           </>
@@ -2271,8 +2318,6 @@ Avoid duplicate or overly broad topics.
                   );
                 })}
               </div>
-
-              <div className="my-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
               {/* ================================================= */}
               {/* DOCUMENT DETAILS */}
