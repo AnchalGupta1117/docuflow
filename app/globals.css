@@ -1,0 +1,422 @@
+@import "tailwindcss";
+
+/* =========================================================
+   DOCUFLOW — GLOBAL STYLES
+   ========================================================= */
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+
+  --primary: #22d3ee;
+  --primary-hover: #67e8f9;
+  --primary-soft: rgba(34, 211, 238, 0.1);
+
+  --border: rgba(255, 255, 255, 0.1);
+  --border-soft: rgba(255, 255, 255, 0.06);
+
+  --muted: #94a3b8;
+  --muted-dark: #64748b;
+
+  --surface: rgba(255, 255, 255, 0.025);
+  --surface-hover: rgba(255, 255, 255, 0.05);
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+  background: rgba(34, 211, 238, 0.25);
+  color: #ffffff;
+}
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Firefox */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #020617;
+}
+
+/* =========================================================
+   FOCUS
+   ========================================================= */
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   UTILITY — GLASS EFFECT
+   ========================================================= */
+
+.glass {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* =========================================================
+   UTILITY — SUBTLE CARD
+   ========================================================= */
+
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease;
+}
+
+.surface-card:hover {
+  background: var(--surface-hover);
+  border-color: rgba(34, 211, 238, 0.15);
+}
+
+/* =========================================================
+   UTILITY — CYAN GLOW
+   ========================================================= */
+
+.cyan-glow {
+  box-shadow:
+    0 0 30px rgba(34, 211, 238, 0.08),
+    0 0 80px rgba(34, 211, 238, 0.04);
+}
+
+/* =========================================================
+   UTILITY — TEXT GRADIENT
+   ========================================================= */
+
+.text-gradient {
+  background: linear-gradient(
+    90deg,
+    #67e8f9 0%,
+    #22d3ee 45%,
+    #60a5fa 100%
+  );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* =========================================================
+   BACKGROUND GRID
+   ========================================================= */
+
+.background-grid {
+  background-image:
+    linear-gradient(
+      rgba(148, 163, 184, 0.035) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.035) 1px,
+      transparent 1px
+    );
+
+  background-size: 40px 40px;
+}
+
+/* =========================================================
+   PAGE CONTAINER
+   ========================================================= */
+
+.page-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .page-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* =========================================================
+   UPLOAD DROPZONE
+   ========================================================= */
+
+.upload-dropzone {
+  position: relative;
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 1rem;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    transform 200ms ease;
+}
+
+.upload-dropzone:hover {
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.035);
+}
+
+.upload-dropzone.active {
+  border-color: rgba(34, 211, 238, 0.8);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+/* =========================================================
+   FILE CARD
+   ========================================================= */
+
+.file-card {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 0.875rem;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    transform 200ms ease;
+}
+
+.file-card:hover {
+  border-color: rgba(34, 211, 238, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out both;
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(34, 211, 238, 0.12);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+/* =========================================================
+   LOADING SPINNER
+   ========================================================= */
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   SHIMMER LOADING
+   ========================================================= */
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* =========================================================
+   DOCUMENT PREVIEW
+   ========================================================= */
+
+.document-preview {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* =========================================================
+   AI MESSAGE BUBBLES
+   ========================================================= */
+
+.ai-message {
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  background: rgba(34, 211, 238, 0.045);
+  border-radius: 1rem;
+}
+
+.user-message {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+}
+
+/* =========================================================
+   RESPONSIVE HELPERS
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .page-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
